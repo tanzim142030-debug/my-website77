@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Tik Tak Toy Game</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;700&display=swap');
+
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    font-family: 'Poppins', sans-serif;
+    color: #fff;
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 30px;
+  }
+  h1 {
+    font-weight: 700;
+    font-size: 2rem;
+    margin-bottom: 15px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.4);
+  }
+  #status {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-bottom: 30px;
+    background: rgba(0,0,0,0.25);
+    padding: 12px 30px;
+    border-radius: 30px;
+    box-shadow: 0 8px 15px rgba(0,0,0,0.3);
+    user-select: none;
+    min-width: 220px;
+    text-align: center;
+  }
+  #board {
+    display: grid;
+    grid-template-columns: repeat(3, 120px);
+    grid-template-rows: repeat(3, 120px);
+    gap: 15px;
+  }
+  .cell {
+    background: rgba(255,255,255,0.15);
+    border-radius: 20px;
+    cursor: pointer;
+    font-size: 4.5rem;
+    color: #f3a683;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-shadow:
+      inset 0 0 10px rgba(255,255,255,0.3),
+      0 8px 15px rgba(0,0,0,0.25);
+    transition: background-color 0.3s, transform 0.2s;
+    user-select: none;
+  }
+  .cell:hover {
+    background: rgba(243, 166, 131, 0.3);
+    transform: scale(1.08);
+  }
+  .cell.x {
+    color: #ff6b6b;
+    text-shadow: 0 0 8px #ff6b6b;
+  }
+  .cell.o {
+    color: #48dbfb;
+    text-shadow: 0 0 8px #48dbfb;
+  }
+  button#restart {
+    margin-top: 35px;
+    background: #fff;
+    color: #764ba2;
+    font-weight: 700;
+    border: none;
+    padding: 15px 45px;
+    border-radius: 50px;
+    font-size: 1.2rem;
+    cursor: pointer;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    transition: background-color 0.3s, color 0.3s;
+    user-select: none;
+  }
+  button#restart:hover {
+    background-color: #5f4099;
+    color: #fff;
+  }
+  @media (max-width: 480px) {
+    #board {
+      grid-template-columns: repeat(3, 80px);
+      grid-template-rows: repeat(3, 80px);
+      gap: 12px;
+    }
+    .cell {
+      font-size: 3rem;
+      border-radius: 15px;
+    }
+    button#restart {
+      padding: 12px 30px;
+      font-size: 1rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <h1>Tik Tak Toy Game</h1>
+  <div id="status">X's turn</div>
+
+  <div id="board">
+    <div class="cell" data-index="0"></div>
+    <div class="cell" data-index="1"></div>
+    <div class="cell" data-index="2"></div>
+    <div class="cell" data-index="3"></div>
+    <div class="cell" data-index="4"></div>
+    <div class="cell" data-index="5"></div>
+    <div class="cell" data-index="6"></div>
+    <div class="cell" data-index="7"></div>
+    <div class="cell" data-index="8"></div>
+  </div>
+
+  <button id="restart">Restart</button>
+
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyCtDWs_Ft0e2NcU-dtwaWPfy-gAXa0azQg",
+      authDomain: "tanzim-main-admin-app.firebaseapp.com",
+      databaseURL: "https://tanzim-main-admin-app-default-rtdb.firebaseio.com",
+      projectId: "tanzim-main-admin-app",
+      storageBucket: "tanzim-main-admin-app.appspot.com",
+      messagingSenderId: "12436676722",
+      appId: "1:12436676722:web:f066ffbc343f0117eea2eb"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const board = Array(9).fill(null);
+    const cells = document.querySelectorAll('.cell');
+    const statusDiv = document.getElementById('status');
+    const restartBtn = document.getElementById('restart');
+
+    let currentPlayer = 'X';
+    let gameActive = true;
+
+    const playerXName = localStorage.getItem('playerXName') || 'X';
+    const playerOName = localStorage.getItem('playerOName') || 'O';
+
+    function updateStatus() {
+      if (!gameActive) return;
+      statusDiv.textContent = `${currentPlayer === 'X' ? playerXName + "'s turn" : playerOName + "'s turn"}`;
+    }
+
+    function checkWinner() {
+      const winPatterns = [
+        [0,1,2],[3,4,5],[6,7,8],
+        [0,3,6],[1,4,7],[2,5,8],
+        [0,4,8],[2,4,6]
+      ];
+
+      for (const pattern of winPatterns) {
+        const [a,b,c] = pattern;
+        if (board[a] && board[a] === board[b] && board[b] === board[c]) {
+          return board[a];
+        }
+      }
+      if (board.every(cell => cell !== null)) return 'draw';
+      return null;
+    }
+
+    function handleClick(e) {
+      const index = e.target.getAttribute('data-index');
+      if (!gameActive || board[index]) return;
+
+      board[index] = currentPlayer;
+      e.target.textContent = currentPlayer;
+      e.target.classList.add(currentPlayer.toLowerCase());
+
+      const winner = checkWinner();
+      if (winner) {
+        gameActive = false;
+        if (winner === 'draw') {
+          statusDiv.textContent = "Game Draw!";
+        } else {
+          statusDiv.textContent = `${winner === 'X' ? playerXName : playerOName} wins! 🎉`;
+        }
+      } else {
+        currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
+        updateStatus();
+      }
+    }
+
+    cells.forEach(cell => cell.addEventListener('click', handleClick));
+
+    restartBtn.addEventListener('click', () => {
+      board.fill(null);
+      cells.forEach(cell => {
+        cell.textContent = '';
+        cell.classList.remove('x','o');
+      });
+      currentPlayer = 'X';
+      gameActive = true;
+      updateStatus();
+    });
+
+    function disableGame(message) {
+      statusDiv.textContent = message;
+      board.style.pointerEvents = 'none';
+      restartBtn.disabled = true;
+      restartBtn.style.opacity = 0.5;
+    }
+
+    function enableGame() {
+      board.style.pointerEvents = 'auto';
+      restartBtn.disabled = false;
+      restartBtn.style.opacity = 1;
+      updateStatus();
+    }
+
+    db.ref('gameStatus').on('value', snapshot => {
+      if(snapshot.exists()) {
+        const data = snapshot.val();
+        if(data.isClosed) {
+          disableGame(data.closeMessage || "গেমটি বর্তমানে বন্ধ রয়েছে।");
+          gameActive = false;
+        } else {
+          enableGame();
+          gameActive = true;
+        }
+      } else {
+        enableGame();
+        gameActive = true;
+      }
+    });
+
+    updateStatus();
+  </script>
+
+</body>
+</html>
